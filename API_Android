@@ -1,0 +1,57 @@
+Script API Android
+1 from kivy.app import App
+2 from kivy.uix.button import Button
+3 from kivy.uix.relativelayout import RelativeLayout
+4 from kivy.network.urlrequest import UrlRequest
+5 import certifi as cfi
+6 from plyer import tts
+7 import os
+8
+9
+10 class MainApp(App):
+11 def build(self):
+12 rl = RelativeLayout()
+13
+14 button1 = Button(text='-UM-', font_size=80, size_hint =(.5, .2), pos_hint={'x':0, 'top':1}, background_color =(0, 0, 128, 0.5))
+15 button2 = Button(text='UNIVERSIDAD\n DE\n MORON', font_size=25, size_hint =(.5, .2), pos_hint ={'right':1, 'top':1}, halign='center', background_color =(0, 0, 128, 0.5))
+16 button3 = Button(text="PULSE\n AQUI", on_release=self.speak, size_hint=(1, .7), pos_hint ={'center_x':.5, 'y':.1}, font_size=80, background_color =(0, 0, 128, 0.5))
+17 button4 = Button(text='.....::::| TECNICAS DIGITALES II |::::.....', size_hint =(1, .10), pos_hint ={'center_x':.5, 'y':0}, font_size=30, background_color =(0, 0, 128, 0.5))
+18
+19 rl.add_widget(button1)
+20 rl.add_widget(button2)
+21 rl.add_widget(button3)
+22 rl.add_widget(button4)
+23 return rl
+24
+25 def speak(self, *args):
+26 path = '/storage/emulated/legacy/BluetoothGraphicsV2f/'
+27 name_list = os.listdir(path)
+28 full_list = [os.path.join(path,i) for i in name_list]
+29 time_sorted_list = sorted(full_list, key=os.path.getmtime, reverse=True)
+30 alfa = time_sorted_list[0]
+31 sumar = alfa + "/log.txt"
+32 tts.speak(message='Por Favor Espere un momento')
+33 f = open(sumar,'r')
+34 mensaje = f.readlines()
+35 f.close()
+36 jota = mensaje[len(mensaje) - 2]
+37 antelinea = jota.rstrip()
+38 # prueba >>> antelinea='https://us1.locationiq.com/v1/reverse.php? #
+# key=pk.a5f0959d8669c937a4b1cb7c96792a0a&format=json& #
+# lat=-34.648378165&lon=-58.620898165' #
+39 print(antelinea)
+40 self.request = UrlRequest(antelinea, on_success=self.res, ca_file=cfi.where(), verify=True)
+41
+42 def res(self,*args):
+43 x=(self.request.result)
+44 print(x)
+71
+45 beta = (x["display_name"])
+46 print(beta)
+47 y = beta.split(",")
+48 zeta = " ".join([y[1], y[0], y[2]])
+49 print(zeta)
+50 tts.speak(message='Su posicion es')
+51 tts.speak(message=zeta)
+52
+53 MainApp().run()
