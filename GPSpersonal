@@ -1,0 +1,138 @@
+Scripts sistema GPS
+----------------------------------------------------------------------------------------------------------------
+ejecutar.sh
+1 #!/bin/sh
+2
+3 gpsd /dev/ttyS1 -F /run/gpsd.sock
+4
+5 gpspipe -r -n 30 -o output_gps.txt
+6
+7 #delay para generar nuevo archivo con salida filtrada
+8
+9 sleep 0.5
+10 grep '$GPGGA' /root/Documents/Digitales2/output_gps.txt >
+/root/Documents/Digitales2/filtro_1.txt
+11 sleep 0.2
+12 tail -n1 filtro_1.txt > filtro_2.txt
+13 sleep 0.1
+14 awk -F "," '{print $3,$4,$5,$6}' /root/Documents/Digitales2/filtro_2.txt > /root/Documents/Digitales2/filtro_3.txt
+15 sleep 0.1
+16 cut -c 1-2,3-12,12-16,17-26 --output-delimiter=$' ' /root/Documents/Digitales2/filtro_3.txt > filtro_4.txt
+----------------------------------------------------------------------------------------------------------------
+ejecutar_2.sh
+1 #!/bin/bash
+2
+3 gpsd /dev/ttyS1 -F /run/gpsd.sock
+4 gpspipe -w -n 20 -o lat_lon.txt
+5 sleep 5
+6 x=$(cat lat_lon.txt | grep lat | tail -n1 | cut -d":" -f10 | cut -d"," -f1)
+7 y=$(cat lat_lon.txt | grep lon | tail -n1 | cut -d":" -f11 | cut -d"," -f1)
+8 echo "https://us1.locationiq.com/v1/reverse.php?key=pk.a5f0959d8669c937a4b1cb7c96792a0a&format=json&lat=$x&lon=$y" > maps.txt
+----------------------------------------------------------------------------------------------------------------
+comandos_at.sh
+1 #!/bin/sh
+2
+3 echo -e -n 'AT+CMGF=1\r' > /dev/ttyS2
+4 sleep 0.1
+5 echo -e -n 'AT+CMGS= "1166756347"\r' > /dev/ttyS2
+6 sleep 0.3
+7 cat filtro_4.txt > /dev/ttyS2
+8 sleep 0.3
+9 echo -e -n '\032' > /dev/ttyS2
+10
+11 #En caso de Agregar otro celular se descomentan las siguientes líneas:
+12
+13 #echo -e -n 'AT+CMGF=1\r' > /dev/ttyS2
+14 #sleep 0.1
+15 #echo -e -n 'AT+CMGS= "xxxxxxxxx"\r' > /dev/ttyS2
+16 #sleep 0.3
+17 #cat filtro_4.txt > /dev/ttyS2
+18 #sleep 0.3
+19 #echo -e -n '\032' > /dev/ttyS2
+----------------------------------------------------------------------------------------------------------------
+consulta.sh
+1 #!/bin/sh
+2
+3 stty -F /dev/ttyS2 9600 raw -echo -echoe -echok -echoctl -echoke
+4 sleep 0.2
+5 echo -e -n 'AT\r' > /dev/ttyS2
+6 sleep 0.2
+7 echo -e -n 'AT+CMGF=1\r' > /dev/ttyS2
+8 sleep 20
+9
+10 echo -e -n 'AT+CMGL="ALL"\r' > /dev/ttyS2 | timeout 2s cat /dev/ttyS2 > /root/Documents/Digitales2/receptor.txt || true
+11 sleep 0.2
+12
+13 if grep 'POS' /root/Documents/Digitales2/receptor.txt ; then
+14 bash comandos_at.sh
+15 sleep 15
+16 echo -e -n 'AT+CMGD=1,4\r' > /dev/ttyS2
+17 rm /root/Documents/Digitales2/receptor.txt
+18 else
+19 echo -e -n 'AT+CMGD=1,4\r' > /dev/ttyS2
+20 fi
+21
+22 exit
+----------------------------------------------------------------------------------------------------------------
+serial_stm32.sh
+1 #!/bin/sh
+2
+3 stty -F /dev/ttyS1 9600 cs8 -cstopb -parenb opost onlcr
+4 cat maps.txt > /dev/ttyS1
+----------------------------------------------------------------------------------------------------------------
+loop_1.sh
+1 #!/bin/sh
+2
+3 while [ 1 ]
+4 do
+5 bash /root/Documents/Digitales2/consulta.sh
+6 sleep 10
+7 done
+----------------------------------------------------------------------------------------------------------------
+loop_2.sh
+1 #!/bin/sh
+2
+3 while [ 1 ]
+4 do
+5 bash /root/Documents/Digitales2/ejecutar.sh
+6 sleep 10
+7 done
+----------------------------------------------------------------------------------------------------------------
+loop_3.sh
+1 #!/bin/sh
+2
+3 while [ 1 ]
+4 do
+5 sleep 300
+6 bash /root/Documents/Digitales2/comandos_at.sh
+7 done
+69
+----------------------------------------------------------------------------------------------------------------
+loop_4.sh
+1 #!/bin/sh
+2
+3 while [ 1 ]
+4 do
+5 bash /root/Documents/Digitales2/serial_stm32.sh
+6 sleep 30
+7 done
+----------------------------------------------------------------------------------------------------------------
+loop_5.sh
+1 #!/bin/sh
+2
+3 while [ 1 ]
+4 do
+5 bash /root/Documents/Digitales2/ejecutar_2.sh
+6 sleep 20
+7 done
+----------------------------------------------------------------------------------------------------------------
+procesos.sh
+1 #!/bin/sh
+2
+3 bash /root/Documents/Digitales2/loop_1.sh & /root/Documents/Digitales2/loop_2.sh & /root/Documents/Digitales2/loop_3.sh & bash /root/Documents/Digitales2/loop_4.sh & bash /root/Documents/Digitales2/loop_5.sh &
+----------------------------------------------------------------------------------------------------------------
+gps.py
+1 import subprocess
+2
+3 subprocess.run(['bash','/root/Documents/Digitales2/procesos.sh'])
+----------------------------------------------------------------------------------------------------------------
